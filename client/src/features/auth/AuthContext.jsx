@@ -56,34 +56,46 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getStoredUser());
   const [token, setToken] = useState(() => getStoredToken());
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [authError, setAuthError] = useState("");
   const pendingUsernameRef = useRef("");
 
-  const establishBackendSession = useCallback(async (firebaseUser, fallbackUsername = "") => {
-    const idToken = await firebaseUser.getIdToken(true);
-    const preferredUsername = resolvePreferredUsername(
-      firebaseUser,
-      fallbackUsername || pendingUsernameRef.current
-    );
+  const resolveSafeSyncPayload = useCallback((firebaseUser, preferredUsername) => {
+    const safeUsername = String(preferredUsername || "").trim();
+    const safeAvatarUrl = String(firebaseUser?.photoURL || "").trim();
 
-    persistSession({ token: idToken });
-    setToken(idToken);
-
-    await syncFirebaseProfile(
-      {
-        username: preferredUsername || undefined,
-        avatarUrl: firebaseUser.photoURL || undefined,
-      },
-      idToken
-    );
-
-    const profile = await getCurrentUser(idToken);
-    persistSession({ token: idToken, user: profile });
-    setUser(profile);
-    setToken(idToken);
-    pendingUsernameRef.current = "";
-
-    return profile;
+    return {
+      username: safeUsername.length >= 3 ? safeUsername : undefined,
+      avatarUrl: /^https?:\/\//i.test(safeAvatarUrl) ? safeAvatarUrl : undefined,
+    };
   }, []);
+
+  const establishBackendSession = useCallback(
+    async (firebaseUser, fallbackUsername = "") => {
+      const idToken = await firebaseUser.getIdToken(true);
+      const preferredUsername = resolvePreferredUsername(
+        firebaseUser,
+        fallbackUsername || pendingUsernameRef.current
+      );
+
+      persistSession({ token: idToken });
+      setToken(idToken);
+
+      await syncFirebaseProfile(
+        resolveSafeSyncPayload(firebaseUser, preferredUsername),
+        idToken
+      );
+
+      const profile = await getCurrentUser(idToken);
+      persistSession({ token: idToken, user: profile });
+      setUser(profile);
+      setToken(idToken);
+      setAuthError("");
+      pendingUsernameRef.current = "";
+
+      return profile;
+    },
+    [resolveSafeSyncPayload]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -98,6 +110,7 @@ export function AuthProvider({ children }) {
         clearSession();
         setUser(null);
         setToken(null);
+        setAuthError("");
         setIsBootstrapping(false);
         return;
       }
@@ -109,6 +122,7 @@ export function AuthProvider({ children }) {
         clearSession();
         setUser(null);
         setToken(null);
+        setAuthError(_error?.message || "Could not complete backend session.");
         pendingUsernameRef.current = "";
       } finally {
         if (mounted) {
@@ -171,6 +185,7 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       token,
+      authError,
       isBootstrapping,
       isAuthenticated: Boolean(user && token),
       login,
@@ -178,7 +193,16 @@ export function AuthProvider({ children }) {
       loginWithGoogle,
       logout,
     }),
-    [user, token, isBootstrapping, login, register, loginWithGoogle, logout]
+    [
+      user,
+      token,
+      authError,
+      isBootstrapping,
+      login,
+      register,
+      loginWithGoogle,
+      logout,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

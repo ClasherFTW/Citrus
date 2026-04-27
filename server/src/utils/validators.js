@@ -6,12 +6,12 @@ const voteTypes = ["upvote", "downvote"];
 const authValidators = {
   syncProfile: [
     body("username")
-      .optional()
+      .optional({ checkFalsy: true })
       .trim()
       .isLength({ min: 3, max: 30 })
       .withMessage("Username must be 3 to 30 characters."),
     body("avatarUrl")
-      .optional()
+      .optional({ checkFalsy: true })
       .isURL()
       .withMessage("avatarUrl must be a valid URL."),
   ],

@@ -18,7 +18,7 @@ const registerSchema = loginSchema.extend({
 function AuthPage() {
   const [mode, setMode] = useState("login");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const { login, register, loginWithGoogle, isAuthenticated } = useAuth();
+  const { login, register, loginWithGoogle, isAuthenticated, authError } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,6 +46,11 @@ function AuthPage() {
       navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, navigate, redirectPath]);
+
+  useEffect(() => {
+    if (!authError) return;
+    toast.error("Session setup failed", authError);
+  }, [authError, toast]);
 
   async function onSubmit(values) {
     try {
@@ -140,6 +145,8 @@ function AuthPage() {
         >
           {mode === "login" ? "Need an account? Register" : "Already have an account? Login"}
         </button>
+
+        {authError ? <p className="inline-error">{authError}</p> : null}
       </section>
     </div>
   );

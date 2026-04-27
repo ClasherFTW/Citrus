@@ -34,6 +34,12 @@ const buildCredential = () => {
     });
   }
 
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[Firebase] Missing Admin credentials in production. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY."
+    );
+  }
+
   // Method 4: Fall back to Application Default Credentials
   console.log("[Firebase] Falling back to Application Default Credentials.");
   return admin.credential.applicationDefault();
