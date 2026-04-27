@@ -1,25 +1,29 @@
 import { apiRequest } from "../../lib/apiClient";
 
-export function registerUser(payload) {
-  return apiRequest("/auth/register", {
+const buildAuthHeaders = (token) =>
+  token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : undefined;
+
+export function syncFirebaseProfile(payload = {}, token) {
+  return apiRequest("/auth/sync", {
     method: "POST",
     body: payload,
+    headers: buildAuthHeaders(token),
   });
 }
 
-export function loginUser(payload) {
-  return apiRequest("/auth/login", {
-    method: "POST",
-    body: payload,
+export function getCurrentUser(token) {
+  return apiRequest("/auth/me", {
+    headers: buildAuthHeaders(token),
   });
 }
 
-export function getCurrentUser() {
-  return apiRequest("/auth/me");
-}
-
-export function logoutUser() {
+export function logoutUser(token) {
   return apiRequest("/auth/logout", {
     method: "POST",
+    headers: buildAuthHeaders(token),
   });
 }

@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../features/auth/AuthContext";
 import { useToast } from "../features/ui/ToastContext";
-import { signInWithGooglePopup } from "../features/auth/firebase";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email."),
@@ -19,7 +18,7 @@ const registerSchema = loginSchema.extend({
 function AuthPage() {
   const [mode, setMode] = useState("login");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const { login, register, loginWithGoogle } = useAuth();
+  const { login, register, loginWithGoogle, isAuthenticated } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,6 +41,12 @@ function AuthPage() {
 
   const redirectPath = location.state?.from?.pathname || "/app";
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(redirectPath, { replace: true });
+    }
+  }, [isAuthenticated, navigate, redirectPath]);
+
   async function onSubmit(values) {
     try {
       if (mode === "login") {
@@ -49,17 +54,15 @@ function AuthPage() {
           email: values.email,
           password: values.password,
         });
-        toast.success("Welcome back", "Login successful.");
+        toast.info("Login accepted", "Finalizing your Citrus session...");
       } else {
         await register({
           username: values.username,
           email: values.email,
           password: values.password,
         });
-        toast.success("Account created", "You are now logged in.");
+        toast.info("Account created", "Finalizing your Citrus session...");
       }
-
-      navigate(redirectPath, { replace: true });
     } catch (error) {
       toast.error("Authentication failed", error.message || "Please try again.");
     }
@@ -68,16 +71,8 @@ function AuthPage() {
   async function onGoogleLogin() {
     try {
       setIsGoogleLoading(true);
-      const googleUser = await signInWithGooglePopup();
-
-      await loginWithGoogle({
-        uid: googleUser.uid,
-        email: googleUser.email,
-        displayName: googleUser.displayName,
-      });
-
-      toast.success("Welcome", "Google login successful.");
-      navigate(redirectPath, { replace: true });
+      await loginWithGoogle();
+      toast.info("Google connected", "Finalizing your Citrus session...");
     } catch (error) {
       toast.error("Google login failed", error.message || "Please try again.");
     } finally {

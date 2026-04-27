@@ -1,137 +1,133 @@
-# Citrus Backend
+# Citrus Monorepo
 
-Production-ready backend for a Stack Overflow-like platform with:
+Citrus has two apps:
 
-- Node.js + Express.js
-- MongoDB + Mongoose
-- JWT auth + bcrypt password hashing
-- Questions, answers, voting, tags, search, and user reputation
-- Socket.io real-time 1-to-1 chat
-- AI endpoint with modular RAG-ready pipeline
+- `server/` -> Backend (Express + MongoDB + Firebase Auth + Socket.io + AI endpoint)
+- `client/` -> Frontend (React + Vite + Firebase client auth)
 
-## Tech Stack
+## What is already connected
 
-- `express`, `mongoose`, `jsonwebtoken`, `bcryptjs`
-- `socket.io`
-- `express-validator`
-- `helmet`, `cors`, `compression`, `morgan`
-- `openai`
+- Firebase auth is used end-to-end.
+- User profiles are stored in MongoDB (`users` collection).
+- Questions, answers, chats, and messages are stored in MongoDB.
+- Realtime 1-to-1 chat is powered by Socket.io and persists to DB.
+- AI endpoint uses local Ollama (`qwen2.5-coder:7b`) with streaming support.
 
-## Quick Start
+## 1) Prerequisites
+
+- Node.js 18+
+- MongoDB (local or Atlas)
+- Firebase project with Authentication enabled (Google and/or email/password)
+- Ollama (for Citrus Bot LLM)
+
+## 2) Configure backend (`server/.env`)
+
+Create `server/.env` from `server/.env.example` and set:
+
+- `MONGO_URI`
+- `MONGO_DB_NAME`
+- `CORS_ORIGIN=http://localhost:6969`
+- Firebase Admin credentials (one method):
+
+Method A (recommended):
+- Put service account JSON in `server/` (ignored by git) matching `*-firebase-adminsdk-*.json`
+
+Method B:
+- Fill env vars:
+  - `FIREBASE_SERVICE_ACCOUNT_JSON` (single-line JSON string)
+  - OR `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+
+AI (Citrus Bot):
+- `OLLAMA_BASE_URL=http://localhost:11434`
+- `OLLAMA_MODEL=qwen2.5-coder:7b`
+
+## 3) Configure frontend (`client/.env`)
+
+Create `client/.env` from `client/.env.example` and set:
+
+- `VITE_API_BASE_URL=http://localhost:5000`
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_FIREBASE_MEASUREMENT_ID`
+
+## 4) Run both apps
+
+Terminal 1 (backend):
 
 ```bash
+cd server
 npm install
-cp .env.example .env
 npm run dev
 ```
 
-Health check:
+Before using Citrus Bot, ensure Ollama is running in a separate terminal:
 
 ```bash
-GET /health
+ollama pull qwen2.5-coder:7b
+ollama serve
 ```
 
-## Environment Variables
+Terminal 2 (frontend):
 
-See `.env.example`.
+```bash
+cd client
+npm install
+npm run dev
+```
 
-Required keys:
+- Backend: `http://localhost:5000`
+- Frontend: `http://localhost:6969`
 
-- `MONGO_URI`
-- `JWT_SECRET`
-- `OPENAI_API_KEY` (optional for AI endpoint; without it, mock fallback is returned)
+## 5) Quick integration checks
 
-## Architecture
+- Health: `GET http://localhost:5000/health`
+- Frontend login: Google or email/password through Firebase
+- After login, app should open `/app`
+- Post question -> visible in question list
+- Open chat page, search users, start chat, send message
+- Open second device/browser with another user -> realtime message delivery
 
-Layered flow:
+## MongoDB data model (collections)
 
-`Routes -> Middleware -> Controllers -> Services -> Models (Mongoose)`
+- `users`
+- `questions`
+- `answers`
+- `chats`
+- `messages`
 
-Main folders:
+Chats/messages are persisted by default in `server/src/services/chatService.js`.
 
-- `src/config` DB and third-party clients
-- `src/models` Mongoose schemas
-- `src/controllers` HTTP handlers
-- `src/services` business logic
-- `src/middleware` auth, validation, logging, errors
-- `src/sockets` real-time chat events
-- `src/routes` API route modules
-- `src/services/rag` modular AI + RAG pipeline
+## LLM integration steps
 
-## API Endpoints
+1. Install/start Ollama locally.
+2. Pull model: `ollama pull qwen2.5-coder:7b`.
+3. Set `OLLAMA_BASE_URL` and `OLLAMA_MODEL` in `server/.env`.
+4. Restart backend.
+5. Frontend Citrus Bot calls:
+   - `POST /ai/chat` (non-stream)
+   - `POST /ai/chat/stream` (streaming token output)
 
-### Auth
+## Realtime websocket notes
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `POST /auth/logout`
-- `GET /auth/me`
+- Socket auth uses Firebase ID token.
+- Events implemented:
+  - `joinRoom`
+  - `leaveRoom`
+  - `typing`
+  - `sendMessage`
+  - server emits `receiveMessage`
+- Multi-device realtime works when both users are authenticated and connected.
 
-### Questions
+## Additional improvements to make it production-ready
 
-- `GET /questions` (pagination, filtering, search, sort)
-- `GET /questions/:id`
-- `POST /questions`
-- `PATCH /questions/:id`
-- `DELETE /questions/:id`
-- `POST /questions/:id/vote` body: `{ "voteType": "upvote" | "downvote" }`
-
-Query support for `GET /questions`:
-
-- `page`, `limit`
-- `search`
-- `tags` (comma-separated or repeated from frontend)
-- `askedBy`
-- `sortBy` (`newest`, `oldest`, `votes`, `answers`)
-
-### Answers
-
-- `GET /answers/question/:questionId`
-- `POST /answers`
-- `PATCH /answers/:id`
-- `DELETE /answers/:id`
-- `POST /answers/:id/vote`
-
-### Users
-
-- `GET /users/me`
-- `GET /users/:id`
-
-### AI
-
-- `POST /ai/chat` body: `{ "question": "...", "useRetrieval": true }`
-
-### Chat
-
-- `GET /chat`
-- `POST /chat/start`
-- `GET /chat/:chatId/messages`
-- `POST /chat/:chatId/messages`
-
-## Socket.io Events
-
-- `connect`
-- `joinRoom`
-- `sendMessage`
-- `receiveMessage`
-- `disconnect`
-- `typing` (typing indicator helper event)
-
-Authentication:
-
-- Pass JWT in `socket.handshake.auth.token` or `Authorization: Bearer <token>`.
-
-## Scripts
-
-- `npm run dev` run in watch mode
-- `npm start` run in production mode
-- `npm run seed` seed sample data
-- `npm run embed:data` generate dry-run embeddings for future vector upsert
-
-## Notes
-
-- Role support (`user`, `admin`) is built-in.
-- Ownership checks are enforced for question/answer edit-delete actions.
-- Private routes are protected by JWT middleware.
-- Centralized validation and error handling are enabled.
-- RAG services are modular and ready for Pinecone/vector integration in Phase 2.
+1. Add refresh-token/session revocation strategy with Firebase Admin checks.
+2. Add rate limiting (`express-rate-limit`) for auth/chat/ai endpoints.
+3. Add request IDs and structured logs for observability.
+4. Add unit/integration tests for auth sync and chat flows.
+5. Add retries/queue for AI calls and timeout handling.
+6. Add presence/unread counts in chat.
+7. Add HTTPS + secure deployment env separation.

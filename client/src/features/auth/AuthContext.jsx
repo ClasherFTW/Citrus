@@ -1,5 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getCurrentUser, loginUser, logoutUser, registerUser } from "./authApi";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { getCurrentUser, logoutUser, syncFirebaseProfile } from "./authApi";
 import {
   clearSession,
   getStoredToken,
@@ -7,147 +15,151 @@ import {
   persistSession,
 } from "../../lib/session";
 import { closeSocket } from "../chat/socketClient";
+import {
+  getCurrentFirebaseUser,
+  registerWithEmailPassword,
+  signInWithEmailPassword,
+  signInWithGooglePopup,
+  signOutFirebase,
+  subscribeToFirebaseIdTokenChanges,
+  updateFirebaseDisplayName,
+} from "./firebase";
 
 const AuthContext = createContext(null);
 
-function sanitizeUsername(value) {
-  return String(value || "")
+const sanitizeUsername = (value) =>
+  String(value || "")
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "")
-    .slice(0, 24);
-}
+    .slice(0, 30);
 
-function buildGoogleUsernameCandidates({ displayName, email, uid }) {
-  const emailPrefix = String(email || "")
-    .split("@")[0]
-    .trim();
+const resolvePreferredUsername = (firebaseUser, fallbackUsername) => {
+  const preferredFromPayload = sanitizeUsername(fallbackUsername);
+  if (preferredFromPayload) return preferredFromPayload;
 
-  const base = sanitizeUsername(displayName) || sanitizeUsername(emailPrefix) || "citrus_user";
-  const uidTail = String(uid || "").slice(-6).toLowerCase();
-  const randomTail = Math.floor(Math.random() * 9000 + 1000);
+  const fromDisplayName = sanitizeUsername(firebaseUser?.displayName || "");
+  if (fromDisplayName) return fromDisplayName;
 
-  return [
-    base,
-    `${base}_${uidTail}`.slice(0, 30),
-    `${base}_${randomTail}`.slice(0, 30),
-  ];
-}
+  const fromEmail = sanitizeUsername(
+    String(firebaseUser?.email || "")
+      .split("@")[0]
+      .trim()
+  );
+  if (fromEmail) return fromEmail;
+
+  return "";
+};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getStoredUser());
   const [token, setToken] = useState(() => getStoredToken());
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const pendingUsernameRef = useRef("");
+
+  const establishBackendSession = useCallback(async (firebaseUser, fallbackUsername = "") => {
+    const idToken = await firebaseUser.getIdToken(true);
+    const preferredUsername = resolvePreferredUsername(
+      firebaseUser,
+      fallbackUsername || pendingUsernameRef.current
+    );
+
+    persistSession({ token: idToken });
+    setToken(idToken);
+
+    await syncFirebaseProfile(
+      {
+        username: preferredUsername || undefined,
+        avatarUrl: firebaseUser.photoURL || undefined,
+      },
+      idToken
+    );
+
+    const profile = await getCurrentUser(idToken);
+    persistSession({ token: idToken, user: profile });
+    setUser(profile);
+    setToken(idToken);
+    pendingUsernameRef.current = "";
+
+    return profile;
+  }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    async function bootstrap() {
-      if (!token) {
+    const unsubscribe = subscribeToFirebaseIdTokenChanges(async (firebaseUser) => {
+      if (!mounted) return;
+
+      setIsBootstrapping(true);
+
+      if (!firebaseUser) {
+        closeSocket();
+        clearSession();
+        setUser(null);
+        setToken(null);
         setIsBootstrapping(false);
         return;
       }
 
       try {
-        const profile = await getCurrentUser();
-        if (!mounted) return;
-
-        setUser(profile);
-        persistSession({ token, user: profile });
+        await establishBackendSession(firebaseUser);
       } catch (_error) {
-        if (!mounted) return;
-
+        closeSocket();
         clearSession();
         setUser(null);
         setToken(null);
+        pendingUsernameRef.current = "";
       } finally {
         if (mounted) {
           setIsBootstrapping(false);
         }
       }
-    }
-
-    bootstrap();
+    });
 
     return () => {
       mounted = false;
+      unsubscribe();
     };
-  }, [token]);
+  }, [establishBackendSession]);
 
-  const login = useCallback(async (payload) => {
-    const data = await loginUser(payload);
-    setToken(data.token);
-    setUser(data.user);
-    persistSession({ token: data.token, user: data.user });
-    return data.user;
-  }, []);
-
-  const register = useCallback(async (payload) => {
-    const data = await registerUser(payload);
-    setToken(data.token);
-    setUser(data.user);
-    persistSession({ token: data.token, user: data.user });
-    return data.user;
-  }, []);
-
-  const loginWithGoogle = useCallback(
-    async ({ uid, email, displayName }) => {
-      if (!uid || !email) {
-        throw new Error("Google account is missing email or uid.");
-      }
-
-      const password = `google_${uid}_citrus`;
-
-      try {
-        return await login({
-          email,
-          password,
-        });
-      } catch (loginError) {
-        if (![400, 401, 404].includes(loginError?.status)) {
-          throw loginError;
-        }
-      }
-
-      const candidates = buildGoogleUsernameCandidates({ displayName, email, uid });
-      for (const username of candidates) {
-        try {
-          return await register({
-            username,
-            email,
-            password,
-          });
-        } catch (registerError) {
-          // Retry with the next username candidate when possible.
-          if (registerError?.status === 409) {
-            try {
-              return await login({
-                email,
-                password,
-              });
-            } catch (_ignored) {
-              continue;
-            }
-          }
-
-          throw registerError;
-        }
-      }
-
-      throw new Error(
-        "Google sign-in could not be linked with backend auth. Try email login or a different account."
-      );
+  const login = useCallback(
+    async ({ email, password }) => {
+      await signInWithEmailPassword({ email, password });
+      return null;
     },
-    [login, register]
+    []
   );
 
+  const register = useCallback(
+    async ({ username, email, password }) => {
+      pendingUsernameRef.current = username || "";
+      const credential = await registerWithEmailPassword({ email, password });
+      if (username) {
+        await updateFirebaseDisplayName(credential.user, username);
+      }
+
+      return null;
+    },
+    []
+  );
+
+  const loginWithGoogle = useCallback(async () => {
+    await signInWithGooglePopup();
+    return null;
+  }, []);
+
   const logout = useCallback(async () => {
+    const current = getCurrentFirebaseUser();
     try {
-      await logoutUser();
+      if (current) {
+        const idToken = await current.getIdToken();
+        await logoutUser(idToken);
+      }
     } catch (_error) {
-      // Ignore network/logout errors and always clear local session.
+      // Ignore network/logout endpoint errors.
     } finally {
+      await signOutFirebase();
       closeSocket();
       clearSession();
       setUser(null);

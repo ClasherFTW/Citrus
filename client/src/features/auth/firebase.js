@@ -1,5 +1,14 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  getAuth,
+  onIdTokenChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCHChR54xUn9_fgdnPeJyC0cL-SZKvYtHI",
@@ -17,10 +26,36 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-export async function signInWithGooglePopup() {
+export function subscribeToFirebaseIdTokenChanges(callback) {
+  return onIdTokenChanged(auth, callback);
+}
+
+export function getCurrentFirebaseUser() {
+  return auth.currentUser;
+}
+
+export function signInWithGooglePopup() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
+  return signInWithPopup(auth, provider);
+}
 
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
+export function signInWithEmailPassword({ email, password }) {
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
+export function registerWithEmailPassword({ email, password }) {
+  return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export function updateFirebaseDisplayName(user, displayName) {
+  if (!user || !displayName) {
+    return Promise.resolve();
+  }
+
+  return updateProfile(user, { displayName });
+}
+
+export function signOutFirebase() {
+  return signOut(auth);
 }

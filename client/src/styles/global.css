@@ -976,6 +976,30 @@ textarea {
   background: rgba(255, 140, 0, 0.1);
 }
 
+.chat-bubble--streaming {
+  box-shadow: inset 0 0 0 1px rgba(255, 140, 0, 0.25);
+}
+
+.chat-caret {
+  display: inline-block;
+  width: 0.5ch;
+  margin-left: 0.1rem;
+  border-right: 2px solid var(--accent);
+  animation: bot-caret-blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes bot-caret-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
 .bot-widget__form {
   border-top: 1px solid var(--border);
   padding: 0.52rem;
@@ -1045,6 +1069,16 @@ textarea {
 /* Chat page */
 .chat-start-panel {
   padding: 0.7rem;
+}
+
+.chat-discovery {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.chat-user-search-results {
+  display: grid;
+  gap: 0.4rem;
 }
 
 .chat-layout {

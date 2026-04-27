@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import AppShell from "../components/layout/AppShell";
@@ -11,6 +11,7 @@ import {
   startChat,
 } from "../features/chat/chatApi";
 import { getSocket } from "../features/chat/socketClient";
+import { listUsers } from "../features/profile/profileApi";
 import { formatRelativeTime } from "../utils/formatters";
 import { getId } from "../utils/id";
 
@@ -28,10 +29,12 @@ function ChatPage() {
   const initialParticipant = searchParams.get("participant") || "";
 
   const [participantId, setParticipantId] = useState(initialParticipant);
+  const [participantSearch, setParticipantSearch] = useState("");
   const [activeChatId, setActiveChatId] = useState("");
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
   const [typingState, setTypingState] = useState({ isTyping: false, userId: "" });
+  const hasAutoStartedRef = useRef(false);
 
   const selfId = user?.id || user?._id || "";
 
@@ -41,6 +44,14 @@ function ChatPage() {
   });
 
   const chatItems = chatsQuery.data?.items || [];
+
+  const usersQuery = useQuery({
+    queryKey: ["users", "chat-search", participantSearch],
+    queryFn: () => listUsers({ search: participantSearch, page: 1, limit: 8 }),
+    enabled: participantSearch.trim().length >= 2,
+  });
+
+  const searchableUsers = usersQuery.data?.items || [];
 
   useEffect(() => {
     if (!activeChatId && chatItems.length > 0) {
@@ -69,6 +80,12 @@ function ChatPage() {
       toast.error("Could not start chat", error.message || "Check participant id.");
     },
   });
+
+  useEffect(() => {
+    if (!initialParticipant || hasAutoStartedRef.current) return;
+    hasAutoStartedRef.current = true;
+    startChatMutation.mutate(initialParticipant);
+  }, [initialParticipant, startChatMutation]);
 
   const sendFallbackMutation = useMutation({
     mutationFn: ({ chatId, content }) => sendChatMessage(chatId, content),
@@ -162,16 +179,47 @@ function ChatPage() {
   return (
     <AppShell title="Realtime Chat" subtitle="1-to-1 chat via HTTP + Socket.io">
       <section className="content-panel chat-start-panel">
-        <form className="inline-actions" onSubmit={handleStartChat}>
+        <div className="chat-discovery">
+          <form className="inline-actions" onSubmit={handleStartChat}>
+            <input
+              value={participantId}
+              onChange={(event) => setParticipantId(event.target.value)}
+              placeholder="Participant user id"
+            />
+            <button type="submit" className="btn btn--primary" disabled={startChatMutation.isPending}>
+              {startChatMutation.isPending ? "Starting..." : "Start / Open Chat"}
+            </button>
+          </form>
+
           <input
-            value={participantId}
-            onChange={(event) => setParticipantId(event.target.value)}
-            placeholder="Participant user id"
+            value={participantSearch}
+            onChange={(event) => setParticipantSearch(event.target.value)}
+            placeholder="Search users by name or email (min 2 chars)"
           />
-          <button type="submit" className="btn btn--primary" disabled={startChatMutation.isPending}>
-            {startChatMutation.isPending ? "Starting..." : "Start / Open Chat"}
-          </button>
-        </form>
+
+          {participantSearch.trim().length >= 2 ? (
+            <div className="chat-user-search-results">
+              {searchableUsers.length === 0 && !usersQuery.isLoading ? (
+                <p className="muted">No users found.</p>
+              ) : null}
+
+              {searchableUsers.map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  className="chat-list-item"
+                  onClick={() => {
+                    setParticipantId(candidate.id);
+                    startChatMutation.mutate(candidate.id);
+                  }}
+                >
+                  <strong>{candidate.username}</strong>
+                  <small>{candidate.email}</small>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </section>
 
       <section className="chat-layout">

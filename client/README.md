@@ -33,12 +33,15 @@ VITE_FIREBASE_MEASUREMENT_ID=...
 - Edit/Delete UI for your own questions and answers
 - Markdown editor with preview for questions/answers
 - Realtime chat page (`/app/chat`) using Socket.io + HTTP fallback
+  - user search + start chat flow
 - Global toast notifications
 - Saved/bookmarked questions
 - Advanced filters (tag, date range, unanswered only, most voted this week)
 - Citrus Bot upgrades:
   - per-question bot thread history
   - use a selected answer as extra context
+  - streamed token output in the bot panel ("typing" effect)
+  - backend model target: Ollama `qwen2.5-coder:7b`
 - UX polish (skeletons, empty states, retry actions)
 - React Query data layer + react-hook-form + zod validation
 - Playwright baseline e2e setup

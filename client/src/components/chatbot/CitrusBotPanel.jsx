@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { askCitrusBot } from "../../features/ai/aiApi";
+import { askCitrusBotStream } from "../../features/ai/aiApi";
 
 const STORAGE_KEY = "citrus_bot_threads";
 
@@ -34,36 +34,68 @@ function saveThread(questionId, messages) {
   }
 }
 
+function createMessage(role, content, extras = {}) {
+  return {
+    id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    role,
+    content,
+    ...extras,
+  };
+}
+
+function getDefaultThread() {
+  return [
+    createMessage(
+      "assistant",
+      "I am Citrus Bot. Ask Citrus anything about this question."
+    ),
+  ];
+}
+
+function normalizeThread(thread) {
+  if (!Array.isArray(thread) || thread.length === 0) {
+    return getDefaultThread();
+  }
+
+  return thread.map((message, index) => ({
+    id: message?.id || `thread-message-${index}`,
+    role: message?.role || "assistant",
+    content: String(message?.content || ""),
+    isStreaming: false,
+  }));
+}
+
 function CitrusBotPanel({ questionId, post, selectedContext, onClearContext }) {
   const [isOpen, setIsOpen] = useState(true);
   const [draft, setDraft] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [messages, setMessages] = useState(() =>
-    getThread(questionId) || [
-      {
-        role: "assistant",
-        content: "I am Citrus Bot. Ask Citrus anything about this question.",
-      },
-    ]
-  );
+  const [messages, setMessages] = useState(() => normalizeThread(getThread(questionId)));
   const endRef = useRef(null);
+  const activeRequestRef = useRef(null);
 
   useEffect(() => {
-    const stored = getThread(questionId);
-    setMessages(
-      stored || [
-        {
-          role: "assistant",
-          content: "I am Citrus Bot. Ask Citrus anything about this question.",
-        },
-      ]
-    );
+    if (activeRequestRef.current) {
+      activeRequestRef.current.abort();
+      activeRequestRef.current = null;
+      setIsLoading(false);
+    }
+
+    setMessages(normalizeThread(getThread(questionId)));
   }, [questionId]);
 
   useEffect(() => {
     saveThread(questionId, messages);
   }, [questionId, messages]);
+
+  useEffect(
+    () => () => {
+      if (activeRequestRef.current) {
+        activeRequestRef.current.abort();
+      }
+    },
+    []
+  );
 
   const postContext = useMemo(() => {
     if (!post) return "";
@@ -79,13 +111,22 @@ function CitrusBotPanel({ questionId, post, selectedContext, onClearContext }) {
     event.preventDefault();
 
     const prompt = draft.trim();
-    if (!prompt) return;
+    if (!prompt || isLoading) return;
 
     setError("");
     setIsLoading(true);
     setDraft("");
 
-    setMessages((prev) => [...prev, { role: "user", content: prompt }]);
+    const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    setMessages((prev) => [
+      ...prev,
+      createMessage("user", prompt),
+      createMessage("assistant", "", {
+        id: assistantMessageId,
+        isStreaming: true,
+      }),
+    ]);
 
     try {
       const payload = [
@@ -97,21 +138,67 @@ function CitrusBotPanel({ questionId, post, selectedContext, onClearContext }) {
         .filter(Boolean)
         .join("\n\n");
 
-      const data = await askCitrusBot({
+      const abortController = new AbortController();
+      activeRequestRef.current = abortController;
+
+      const data = await askCitrusBotStream({
         question: payload,
         useRetrieval: true,
+        signal: abortController.signal,
+        onChunk: (chunk) => {
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    content: `${message.content}${chunk}`,
+                    isStreaming: true,
+                  }
+                : message
+            )
+          );
+
+          window.requestAnimationFrame(() => {
+            endRef.current?.scrollIntoView({ behavior: "smooth" });
+          });
+        },
       });
 
       setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: data.answer || "No response returned.",
-        },
+        ...prev.map((message) =>
+          message.id === assistantMessageId
+            ? {
+                ...message,
+                content: message.content.trim()
+                  ? message.content
+                  : data.answer || "No response returned.",
+                isStreaming: false,
+              }
+            : message
+        ),
       ]);
     } catch (requestError) {
-      setError(requestError.message || "Could not reach Citrus Bot.");
+      const isAborted = requestError?.name === "AbortError";
+      const errorMessage = isAborted
+        ? "Citrus Bot request was cancelled."
+        : requestError.message || "Could not reach Citrus Bot.";
+
+      setError(errorMessage);
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === assistantMessageId
+            ? {
+                ...message,
+                content: isAborted
+                  ? "Streaming stopped."
+                  : "I could not generate an answer right now. Please try again.",
+                isStreaming: false,
+              }
+            : message
+        )
+      );
     } finally {
+      activeRequestRef.current = null;
       setIsLoading(false);
       window.requestAnimationFrame(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,11 +207,17 @@ function CitrusBotPanel({ questionId, post, selectedContext, onClearContext }) {
   }
 
   function clearThread() {
+    if (activeRequestRef.current) {
+      activeRequestRef.current.abort();
+      activeRequestRef.current = null;
+      setIsLoading(false);
+    }
+
     setMessages([
-      {
-        role: "assistant",
-        content: "Thread reset. Ask a fresh question whenever you want.",
-      },
+      createMessage(
+        "assistant",
+        "Thread reset. Ask a fresh question whenever you want."
+      ),
     ]);
   }
 
@@ -155,12 +248,16 @@ function CitrusBotPanel({ questionId, post, selectedContext, onClearContext }) {
 
           <div className="bot-widget__messages">
             {messages.map((msg, index) => (
-              <p key={`${msg.role}-${index}`} className={`chat-bubble chat-bubble--${msg.role}`}>
+              <p
+                key={msg.id || `${msg.role}-${index}`}
+                className={`chat-bubble chat-bubble--${msg.role} ${
+                  msg.isStreaming ? "chat-bubble--streaming" : ""
+                }`}
+              >
                 {msg.content}
+                {msg.isStreaming ? <span className="chat-caret" aria-hidden="true" /> : null}
               </p>
             ))}
-
-            {isLoading ? <p className="chat-bubble chat-bubble--assistant">Thinking...</p> : null}
             <div ref={endRef} />
           </div>
 
@@ -176,7 +273,7 @@ function CitrusBotPanel({ questionId, post, selectedContext, onClearContext }) {
             {error ? <p className="inline-error">{error}</p> : null}
 
             <button type="submit" className="btn btn--primary" disabled={isLoading}>
-              {isLoading ? "Sending..." : "Send"}
+              {isLoading ? "Generating..." : "Send"}
             </button>
           </form>
         </div>
