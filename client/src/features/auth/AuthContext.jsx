@@ -58,6 +58,7 @@ export function AuthProvider({ children }) {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [authError, setAuthError] = useState("");
   const pendingUsernameRef = useRef("");
+  const isEstablishingRef = useRef(false);
 
   const resolveSafeSyncPayload = useCallback((firebaseUser, preferredUsername) => {
     const safeUsername = String(preferredUsername || "").trim();
@@ -71,7 +72,7 @@ export function AuthProvider({ children }) {
 
   const establishBackendSession = useCallback(
     async (firebaseUser, fallbackUsername = "") => {
-      const idToken = await firebaseUser.getIdToken(true);
+      const idToken = await firebaseUser.getIdToken();
       const preferredUsername = resolvePreferredUsername(
         firebaseUser,
         fallbackUsername || pendingUsernameRef.current
@@ -103,6 +104,10 @@ export function AuthProvider({ children }) {
     const unsubscribe = subscribeToFirebaseIdTokenChanges(async (firebaseUser) => {
       if (!mounted) return;
 
+      if (isEstablishingRef.current) {
+        return;
+      }
+
       setIsBootstrapping(true);
 
       if (!firebaseUser) {
@@ -111,13 +116,22 @@ export function AuthProvider({ children }) {
         setUser(null);
         setToken(null);
         setAuthError("");
+        isEstablishingRef.current = false;
         setIsBootstrapping(false);
         return;
       }
 
+      isEstablishingRef.current = true;
+
       try {
         await establishBackendSession(firebaseUser);
       } catch (_error) {
+        try {
+          await signOutFirebase();
+        } catch (__error) {
+          // Ignore sign-out errors.
+        }
+
         closeSocket();
         clearSession();
         setUser(null);
@@ -125,6 +139,7 @@ export function AuthProvider({ children }) {
         setAuthError(_error?.message || "Could not complete backend session.");
         pendingUsernameRef.current = "";
       } finally {
+        isEstablishingRef.current = false;
         if (mounted) {
           setIsBootstrapping(false);
         }
@@ -139,6 +154,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(
     async ({ email, password }) => {
+      setAuthError("");
       await signInWithEmailPassword({ email, password });
       return null;
     },
@@ -147,6 +163,7 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(
     async ({ username, email, password }) => {
+      setAuthError("");
       pendingUsernameRef.current = username || "";
       const credential = await registerWithEmailPassword({ email, password });
       if (username) {
@@ -159,6 +176,7 @@ export function AuthProvider({ children }) {
   );
 
   const loginWithGoogle = useCallback(async () => {
+    setAuthError("");
     await signInWithGooglePopup();
     return null;
   }, []);

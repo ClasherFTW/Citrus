@@ -28,7 +28,7 @@ VITE_FIREBASE_MEASUREMENT_ID=...
 Production (Vercel):
 
 ```bash
-VITE_API_BASE_URL=https://citrus-1-1g0z.onrender.com
+VITE_API_BASE_URL=https://citrus-9lf9.onrender.com
 ```
 
 `vercel.json` is included with an SPA rewrite to `index.html` so deep links work.
