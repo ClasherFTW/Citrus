@@ -1,5 +1,6 @@
 import { apiRequest, ApiClientError } from "../../lib/apiClient";
 import { getStoredToken } from "../../lib/session";
+import { getApiBaseUrl } from "../../lib/config";
 
 export function askCitrusBot({ question, useRetrieval = true }) {
   return apiRequest("/ai/chat", {
@@ -18,7 +19,7 @@ export async function askCitrusBotStream({
   signal,
 }) {
   const token = getStoredToken();
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const baseUrl = getApiBaseUrl();
 
   const response = await fetch(`${baseUrl}/ai/chat/stream`, {
     method: "POST",

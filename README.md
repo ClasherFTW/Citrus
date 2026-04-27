@@ -26,7 +26,7 @@ Create `server/.env` from `server/.env.example` and set:
 
 - `MONGO_URI`
 - `MONGO_DB_NAME`
-- `CORS_ORIGIN=http://localhost:6969`
+- `CORS_ORIGIN=http://localhost:6969,https://citrus-chi.vercel.app`
 - Firebase Admin credentials (one method):
 
 Method A (recommended):
@@ -82,6 +82,30 @@ npm run dev
 - Backend: `http://localhost:5000`
 - Frontend: `http://localhost:6969`
 
+## Deployment (Render + Vercel)
+
+Use these production URLs:
+
+- Backend: `https://citrus-1-1g0z.onrender.com`
+- Frontend: `https://citrus-chi.vercel.app`
+
+Render environment variables:
+
+- `CORS_ORIGIN=http://localhost:6969,https://citrus-chi.vercel.app`
+- `MONGO_URI=...`
+- `MONGO_DB_NAME=...`
+- Firebase Admin env vars (`FIREBASE_SERVICE_ACCOUNT_JSON` or field-based vars)
+
+Vercel environment variables:
+
+- `VITE_API_BASE_URL=https://citrus-1-1g0z.onrender.com`
+- All `VITE_FIREBASE_*` vars
+
+Notes:
+
+- Frontend code now auto-falls back to `https://citrus-1-1g0z.onrender.com` in production if `VITE_API_BASE_URL` is missing.
+- Always set `VITE_API_BASE_URL` explicitly in Vercel to avoid surprises across preview deployments.
+
 ## 5) Quick integration checks
 
 - Health: `GET http://localhost:5000/health`
@@ -100,6 +124,12 @@ npm run dev
 - `messages`
 
 Chats/messages are persisted by default in `server/src/services/chatService.js`.
+
+MongoDB Atlas checks for deployment:
+
+- In `Network Access`, allow Render to connect (common setup is `0.0.0.0/0` with strong DB user credentials).
+- Ensure DB user has read/write on your target DB.
+- Keep Atlas connection string only in backend (Render), never in frontend.
 
 ## LLM integration steps
 

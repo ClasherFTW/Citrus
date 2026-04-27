@@ -25,6 +25,14 @@ VITE_FIREBASE_APP_ID=...
 VITE_FIREBASE_MEASUREMENT_ID=...
 ```
 
+Production (Vercel):
+
+```bash
+VITE_API_BASE_URL=https://citrus-1-1g0z.onrender.com
+```
+
+`vercel.json` is included with an SPA rewrite to `index.html` so deep links work.
+
 ## Main Features
 
 - Landing, login/register, main Q&A page, question detail page

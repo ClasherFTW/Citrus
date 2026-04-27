@@ -22,7 +22,7 @@ const parseAllowedOrigins = () => {
 
   const origins = raw
     .split(",")
-    .map((item) => item.trim())
+    .map((item) => item.trim().replace(/\/+$/, ""))
     .filter(Boolean);
 
   if (origins.length === 0) return true;

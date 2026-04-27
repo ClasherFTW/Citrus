@@ -1,6 +1,7 @@
 import { getStoredToken } from "./session";
+import { getApiBaseUrl } from "./config";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = getApiBaseUrl();
 
 export class ApiClientError extends Error {
   constructor(message, { status = 500, details = null } = {}) {
