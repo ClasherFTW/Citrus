@@ -1,4 +1,4 @@
-# Citrus Monorepo
+# Citrus 
 
 Citrus has two apps:
 
