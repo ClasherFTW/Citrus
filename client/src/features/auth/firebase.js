@@ -12,10 +12,10 @@ import {
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCHChR54xUn9_fgdnPeJyC0cL-SZKvYtHI",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "cylink-5589a.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "cylink-5589a",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "citrus-5589a.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "citrus-5589a",
   storageBucket:
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "cylink-5589a.firebasestorage.app",
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "citrus-5589a.firebasestorage.app",
   messagingSenderId:
     import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "493811785650",
   appId:

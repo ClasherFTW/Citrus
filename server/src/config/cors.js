@@ -2,17 +2,13 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const toNormalizedOrigin = (value) => String(value || "").trim().replace(/\/+$/, "");
 
-const isTrustedPreviewOrLocalhost = (origin) => {
+const isTrustedLocalhost = (origin) => {
   if (!origin) return true;
   try {
     const url = new URL(origin);
     const host = url.hostname.toLowerCase();
 
     if (host === "localhost" || host === "127.0.0.1") {
-      return true;
-    }
-
-    if (host.endsWith(".vercel.app")) {
       return true;
     }
   } catch (_error) {
@@ -70,7 +66,7 @@ const buildCorsOriginDelegate = () => {
     }
 
     const allowedByRule = rules.some((rule) => rule.test(origin));
-    if (allowedByRule || isTrustedPreviewOrLocalhost(origin)) {
+    if (allowedByRule || isTrustedLocalhost(origin)) {
       callback(null, true);
       return;
     }
@@ -82,4 +78,3 @@ const buildCorsOriginDelegate = () => {
 module.exports = {
   buildCorsOriginDelegate,
 };
-

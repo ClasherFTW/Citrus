@@ -1,0 +1,70 @@
+<%- include('partials/app_shell_start', { title, activeNav, currentUser, pageTitle: 'Question Details', pageSubtitle: `Asked ${new Date(question.createdAt).toLocaleString()}` }) %>
+
+<section class="content-panel question-view-panel">
+  <div class="question-view-panel__head">
+    <h2><%= question.title %></h2>
+    <div class="inline-actions compact">
+      <button type="button" class="vote-action js-vote-question" data-id="<%= question._id %>" data-vote="upvote" <%= !currentUser ? 'disabled' : '' %>>ZESTY</button>
+      <strong><%= question.voteScore || 0 %></strong>
+      <button type="button" class="vote-action js-vote-question" data-id="<%= question._id %>" data-vote="downvote" <%= !currentUser ? 'disabled' : '' %>>NOT ZESTY</button>
+    </div>
+  </div>
+
+  <div class="question-view-panel__body"><%= question.description %></div>
+
+  <div class="question-view-panel__footer">
+    <div class="tag-row">
+      <% (question.tags || []).forEach((tag) => { %>
+        <span class="tag-chip"><%= tag %></span>
+      <% }) %>
+    </div>
+    <small>
+      by
+      <a href="/app/users/<%= question.userId?._id || question.userId %>"><%= question.userId?.username || 'anonymous' %></a>
+    </small>
+  </div>
+  <div class="inline-actions compact">
+    <a class="soft-action" href="/app/chat?participant=<%= question.userId?._id || question.userId %>">Message Author</a>
+  </div>
+</section>
+
+<section class="content-panel">
+  <h3>Write your answer</h3>
+  <% if (!currentUser) { %>
+    <p class="muted">Please <a href="/auth?next=<%= encodeURIComponent(`/app/questions/${question._id}`) %>">login</a> to answer.</p>
+  <% } %>
+  <form id="answerForm" data-question-id="<%= question._id %>">
+    <textarea name="content" minlength="10" required></textarea>
+    <button type="submit" class="btn btn--primary" <%= !currentUser ? 'disabled' : '' %>>Post Answer</button>
+    <p id="answerMessage" class="inline-error"></p>
+  </form>
+</section>
+
+<section class="content-panel answer-list">
+  <h3><%= answers.length %> Answers</h3>
+  <% if (!answers.length) { %>
+    <p class="muted">No answers yet.</p>
+  <% } %>
+
+  <% answers.forEach((answer) => { %>
+    <article class="answer-item">
+      <div class="answer-item__votes">
+        <button type="button" class="vote-action js-vote-answer" data-id="<%= answer._id %>" data-vote="upvote" <%= !currentUser ? 'disabled' : '' %>>Z+</button>
+        <strong><%= answer.voteScore || 0 %></strong>
+        <button type="button" class="vote-action js-vote-answer" data-id="<%= answer._id %>" data-vote="downvote" <%= !currentUser ? 'disabled' : '' %>>Z-</button>
+      </div>
+      <div>
+        <div class="answer-item__content"><%= answer.content %></div>
+        <div class="answer-item__footer">
+          <small>
+            by
+            <a href="/app/users/<%= answer.userId?._id || answer.userId %>"><%= answer.userId?.username || 'anonymous' %></a>
+            | <%= new Date(answer.createdAt).toLocaleString() %>
+          </small>
+        </div>
+      </div>
+    </article>
+  <% }) %>
+</section>
+
+<%- include('partials/app_shell_end') %>

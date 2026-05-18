@@ -1,0 +1,49 @@
+<%- include('partials/app_shell_start', { title, activeNav, currentUser, pageTitle: 'Realtime Chat', pageSubtitle: '1-to-1 messaging with live updates' }) %>
+
+<section class="content-panel chat-start-panel">
+  <div class="chat-discovery">
+    <form id="chatStartForm" class="chat-discovery__start">
+      <input id="participantIdInput" placeholder="Enter user ID to start chat" value="<%= initialParticipant %>" />
+      <button type="submit" class="btn btn--primary">Start / Open Chat</button>
+    </form>
+
+    <input id="participantSearchInput" class="chat-discovery__search" placeholder="Search users by name or email (min 2 chars)" />
+    <div id="chatUserSearchResults" class="chat-user-search-results"></div>
+  </div>
+</section>
+
+<section class="chat-layout">
+  <aside class="content-panel chat-list-panel">
+    <div class="chat-section-head">
+      <h3>Your Chats</h3>
+      <small id="chatCount"><%= initialChats.length %></small>
+    </div>
+    <div id="chatList"></div>
+  </aside>
+
+  <div class="content-panel chat-thread-panel">
+    <div class="chat-section-head">
+      <h3 id="chatPartnerName">Messages</h3>
+      <small id="chatPartnerMeta">Select or start a chat</small>
+    </div>
+
+    <div id="chatThread" class="chat-thread"></div>
+    <p id="chatTypingState" class="muted"></p>
+
+    <form id="chatMessageForm" class="chat-input">
+      <textarea id="chatDraftInput" rows="3" placeholder="Type a message" disabled></textarea>
+      <button type="submit" class="btn btn--primary" id="chatSendBtn" disabled>Send</button>
+    </form>
+  </div>
+</section>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  window.__CYLINK_CHAT_BOOTSTRAP__ = {
+    initialParticipant: <%- JSON.stringify(initialParticipant) %>,
+    initialChats: <%- JSON.stringify(initialChats) %>,
+    selfId: <%- JSON.stringify(String(currentUser?._id || '')) %>
+  };
+</script>
+<script src="/js/chat.js" defer></script>
+<%- include('partials/app_shell_end') %>

@@ -1,3 +1,4 @@
+const multer = require("multer");
 const ApiError = require("../utils/ApiError");
 
 const notFound = (req, _res, next) => {
@@ -8,6 +9,15 @@ const errorHandler = (err, _req, res, _next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || "Internal server error";
   let details = err.details || null;
+
+  if (err instanceof multer.MulterError) {
+    statusCode = 400;
+    if (err.code === "LIMIT_FILE_SIZE") {
+      message = "Image is too large. Max upload size is 5MB.";
+    } else {
+      message = `Upload error: ${err.message}`;
+    }
+  }
 
   if (err.name === "CastError") {
     statusCode = 400;

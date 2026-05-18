@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/main.css" />
+  </head>
+  <body>
+    <div class="so-shell">
+      <aside class="so-sidebar">
+        <div class="so-sidebar__brand">
+          <a href="/app" class="brand-link">CyLink <span class="brand-link__dot"></span></a>
+        </div>
+
+        <nav class="so-sidebar__nav">
+          <a href="/app" class="so-nav-item <%= activeNav === 'questions' ? 'is-active' : '' %>">Questions</a>
+          <a href="/app?saved=1" class="so-nav-item <%= activeNav === 'saved' ? 'is-active' : '' %>">Saved</a>
+          <a href="/app/profile" class="so-nav-item <%= activeNav === 'profile' ? 'is-active' : '' %>">Profile</a>
+          <a href="/app/chat" class="so-nav-item <%= activeNav === 'chat' ? 'is-active' : '' %>">Chat</a>
+        </nav>
+
+        <% if (currentUser) { %>
+          <div class="so-sidebar__foot">
+            <p>Logged in as</p>
+            <strong><%= currentUser.username || 'developer' %></strong>
+            <small><%= currentUser.reputation || 0 %> reputation</small>
+          </div>
+        <% } %>
+      </aside>
+
+      <div class="so-main">
+        <header class="so-topbar">
+          <div>
+            <h1><%= pageTitle %></h1>
+            <% if (pageSubtitle) { %>
+              <p><%= pageSubtitle %></p>
+            <% } %>
+          </div>
+
+          <div class="so-topbar__actions">
+            <% if (currentUser) { %>
+              <a href="/app/profile" class="btn btn--ghost">My Profile</a>
+              <button type="button" class="btn btn--ghost" id="logoutBtn">Logout</button>
+            <% } else { %>
+              <a href="/auth?next=<%= encodeURIComponent('/app') %>" class="btn btn--primary">Login</a>
+            <% } %>
+          </div>
+        </header>
+
+        <main class="so-content">

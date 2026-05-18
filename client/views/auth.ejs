@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/main.css" />
+  </head>
+  <body>
+    <div class="auth-page">
+      <section class="auth-card">
+        <a href="/" class="brand-link auth-brand">CyLink <span class="brand-link__dot"></span></a>
+        <h1>Login</h1>
+        <p>Enter your credentials to continue to CyLink.</p>
+
+        <p id="authMessage" class="inline-error"></p>
+
+        <form id="emailAuthForm" class="auth-form">
+          <label>
+            Username (for signup)
+            <input name="username" type="text" placeholder="developer_name" minlength="3" maxlength="30" />
+          </label>
+
+          <label>
+            Email
+            <input name="email" type="email" placeholder="you@example.com" required />
+          </label>
+
+          <label>
+            Password
+            <input name="password" type="password" placeholder="At least 6 characters" minlength="6" required />
+          </label>
+
+          <div class="auth-actions">
+            <button type="submit" class="btn btn--primary" data-mode="login">Login</button>
+            <button type="submit" class="btn btn--ghost" data-mode="signup">Create Account</button>
+          </div>
+        </form>
+
+        <div class="auth-separator"><span>or</span></div>
+
+        <button id="googleLoginBtn" type="button" class="btn btn--ghost auth-google-btn">Continue with Google</button>
+      </section>
+    </div>
+
+    <script>
+      window.__CYLINK_FIREBASE_CONFIG__ = <%- JSON.stringify(firebaseClientConfig) %>;
+      window.__CYLINK_NEXT_PATH__ = <%- JSON.stringify(nextPath) %>;
+    </script>
+    <script type="module" src="/js/auth.js"></script>
+  </body>
+</html>

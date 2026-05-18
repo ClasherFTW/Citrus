@@ -1,0 +1,143 @@
+<%- include('partials/app_shell_start', { title, activeNav, currentUser, pageTitle: 'Newest Questions', pageSubtitle: `${stats.resultCount} results${filters.saved ? ' | saved only' : ''}` }) %>
+
+<section class="stats-strip content-panel compact">
+  <div>
+    <strong><%= allLoadedCount %></strong>
+    <span>loaded</span>
+  </div>
+  <div>
+    <strong><%= stats.answeredCount %></strong>
+    <span>answered</span>
+  </div>
+  <div>
+    <strong><%= stats.tagCount %></strong>
+    <span>tags</span>
+  </div>
+  <div>
+    <strong><%= stats.today %></strong>
+    <span>today</span>
+  </div>
+</section>
+
+<section class="content-panel filter-panel">
+  <form class="filters-grid" method="GET" action="/app">
+    <label>
+      Search
+      <input name="search" value="<%= filters.search %>" placeholder="Search questions" />
+    </label>
+
+    <label>
+      Tag
+      <select name="tag">
+        <option value="">All tags</option>
+        <% availableTags.forEach((tag) => { %>
+          <option value="<%= tag %>" <%= filters.tag === tag ? 'selected' : '' %>><%= tag %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Date range
+      <select name="dateRange">
+        <option value="any" <%= filters.dateRange === 'any' ? 'selected' : '' %>>Any time</option>
+        <option value="24h" <%= filters.dateRange === '24h' ? 'selected' : '' %>>Last 24 hours</option>
+        <option value="7d" <%= filters.dateRange === '7d' ? 'selected' : '' %>>Last 7 days</option>
+        <option value="30d" <%= filters.dateRange === '30d' ? 'selected' : '' %>>Last 30 days</option>
+      </select>
+    </label>
+
+    <label>
+      Sort
+      <select name="sortBy">
+        <option value="newest" <%= filters.sortBy === 'newest' ? 'selected' : '' %>>Newest</option>
+        <option value="oldest" <%= filters.sortBy === 'oldest' ? 'selected' : '' %>>Oldest</option>
+        <option value="votes" <%= filters.sortBy === 'votes' ? 'selected' : '' %>>Top votes</option>
+        <option value="answers" <%= filters.sortBy === 'answers' ? 'selected' : '' %>>Most answered</option>
+        <option value="topWeek" <%= filters.sortBy === 'topWeek' ? 'selected' : '' %>>Most voted this week</option>
+      </select>
+    </label>
+
+    <label>
+      Unanswered only
+      <select name="unansweredOnly">
+        <option value="0" <%= !filters.unansweredOnly ? 'selected' : '' %>>No</option>
+        <option value="1" <%= filters.unansweredOnly ? 'selected' : '' %>>Yes</option>
+      </select>
+    </label>
+
+    <button type="submit" class="btn btn--primary">Apply</button>
+  </form>
+</section>
+
+<section class="content-panel composer-panel">
+  <h3>Ask Question</h3>
+  <% if (!currentUser) { %>
+    <p class="muted">Please <a href="/auth?next=<%= encodeURIComponent('/app') %>">login</a> to post a question.</p>
+  <% } %>
+  <form id="askForm">
+    <label>
+      Title
+      <input name="title" minlength="10" maxlength="200" required />
+    </label>
+    <label>
+      Description
+      <textarea name="description" minlength="20" required></textarea>
+    </label>
+    <label>
+      Tags
+      <input name="tags" placeholder="react, node, mongodb" />
+    </label>
+    <button type="submit" class="btn btn--primary" <%= !currentUser ? 'disabled' : '' %>>Publish Question</button>
+    <p id="askMessage" class="inline-error"></p>
+  </form>
+</section>
+
+<section class="content-panel question-list-panel">
+  <% if (!questions.length) { %>
+    <p class="muted">No matching questions.</p>
+  <% } %>
+
+  <% questions.forEach((question) => { %>
+    <article class="question-item" data-question-id="<%= question._id %>">
+      <aside class="question-item__stats">
+        <strong><%= question.voteScore || 0 %></strong>
+        <span>zesty</span>
+        <strong class="<%= (question.answersCount || 0) > 0 ? 'has-answer' : '' %>"><%= question.answersCount || 0 %></strong>
+        <span>answers</span>
+      </aside>
+
+      <div class="question-item__body">
+        <h3>
+          <a href="/app/questions/<%= question._id %>" class="linklike"><%= question.title %></a>
+        </h3>
+        <p><%= question.description.slice(0, 220) %></p>
+        <div class="question-item__footer">
+          <div class="tag-row">
+            <% (question.tags || []).forEach((tag) => { %>
+              <span class="tag-chip"><%= tag %></span>
+            <% }) %>
+          </div>
+          <small>
+            asked <%= new Date(question.createdAt).toLocaleString() %> by
+            <a href="/app/users/<%= question.userId?._id || question.userId %>"><%= question.userId?.username || 'anonymous' %></a>
+          </small>
+        </div>
+      </div>
+
+      <div class="question-item__actions">
+        <button type="button" class="vote-action js-vote-question" data-id="<%= question._id %>" data-vote="upvote" <%= !currentUser ? 'disabled' : '' %>>ZESTY</button>
+        <button type="button" class="vote-action js-vote-question" data-id="<%= question._id %>" data-vote="downvote" <%= !currentUser ? 'disabled' : '' %>>NOT ZESTY</button>
+        <button type="button" class="soft-action js-toggle-save" data-id="<%= question._id %>">Save</button>
+        <a class="soft-action" href="/app/chat?participant=<%= question.userId?._id || question.userId %>">Message</a>
+      </div>
+    </article>
+  <% }) %>
+</section>
+
+<section class="pagination-row">
+  <a class="btn btn--ghost <%= pagination.page <= 1 ? 'disabled' : '' %>" href="/app?<%= new URLSearchParams({ ...filters, page: Math.max(1, pagination.page - 1), unansweredOnly: filters.unansweredOnly ? '1' : '0' }).toString() %>">Previous</a>
+  <p>Page <%= pagination.page %> of <%= pagination.totalPages %></p>
+  <a class="btn btn--ghost <%= pagination.page >= pagination.totalPages ? 'disabled' : '' %>" href="/app?<%= new URLSearchParams({ ...filters, page: Math.min(pagination.totalPages, pagination.page + 1), unansweredOnly: filters.unansweredOnly ? '1' : '0' }).toString() %>">Next</a>
+</section>
+
+<%- include('partials/app_shell_end') %>

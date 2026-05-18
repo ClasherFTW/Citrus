@@ -96,7 +96,35 @@ const listPublicProfiles = async ({
   };
 };
 
+const updateMyProfile = async ({ userId, payload }) => {
+  const updates = {};
+
+  if (payload.username !== undefined) {
+    updates.username = String(payload.username || "").trim();
+  }
+
+  if (payload.bio !== undefined) {
+    updates.bio = String(payload.bio || "").trim();
+  }
+
+  if (payload.avatarUrl !== undefined) {
+    updates.avatarUrl = String(payload.avatarUrl || "").trim();
+  }
+
+  const user = await User.findByIdAndUpdate(userId, { $set: updates }, { new: true });
+  if (!user) {
+    throw new ApiError(404, "User not found.");
+  }
+
+  const stats = await getProfileStats(user._id);
+  return {
+    ...pickPublicProfile(user),
+    stats,
+  };
+};
+
 module.exports = {
   getProfileById,
   listPublicProfiles,
+  updateMyProfile,
 };

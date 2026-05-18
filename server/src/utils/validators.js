@@ -97,6 +97,22 @@ const answerValidators = {
 
 const userValidators = {
   getById: [param("id").matches(mongoId).withMessage("Invalid user id.")],
+  updateMe: [
+    body("username")
+      .optional()
+      .trim()
+      .isLength({ min: 3, max: 30 })
+      .withMessage("Username must be 3 to 30 characters."),
+    body("bio")
+      .optional()
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage("Bio cannot exceed 500 characters."),
+    body("avatarUrl")
+      .optional()
+      .isURL()
+      .withMessage("avatarUrl must be a valid URL."),
+  ],
   list: [
     query("page").optional().isInt({ min: 1 }).withMessage("Page must be >= 1."),
     query("limit")

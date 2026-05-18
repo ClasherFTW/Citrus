@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/main.css" />
+  </head>
+  <body>
+    <div class="landing-wrap">
+      <div class="landing-center border-glow-card">
+        <div class="border-glow-inner">
+          <span class="brand-link">CyLink <span class="brand-link__dot"></span></span>
+          <h1>Ask. Solve. Share.</h1>
+          <p>Developer Q&A with realtime chat and focused AI help.</p>
+          <div class="landing-center__actions">
+            <a href="/auth?next=<%= encodeURIComponent('/app') %>" class="btn btn--primary">Get Started</a>
+            <a href="/auth?next=<%= encodeURIComponent('/app') %>" class="btn btn--ghost">Login</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

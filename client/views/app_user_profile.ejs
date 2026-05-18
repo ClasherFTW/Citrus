@@ -1,0 +1,51 @@
+<%- include('partials/app_shell_start', { title, activeNav, currentUser, pageTitle: 'User Profile', pageSubtitle: 'Community member details' }) %>
+
+<section class="content-panel profile-head">
+  <h2><%= profile.username %></h2>
+  <p><%= profile.bio || 'No bio added yet.' %></p>
+
+  <div class="stats-strip compact">
+    <div><strong><%= profile.reputation || 0 %></strong><span>reputation</span></div>
+    <div><strong><%= profile.stats?.questionCount || 0 %></strong><span>questions</span></div>
+    <div><strong><%= profile.stats?.answerCount || 0 %></strong><span>answers</span></div>
+    <div><strong><%= profile.role %></strong><span>role</span></div>
+  </div>
+
+  <div class="tag-row">
+    <% (profile.stats?.topTags || []).forEach((item) => { %>
+      <span class="tag-chip"><%= item.tag %> (<%= item.count %>)</span>
+    <% }) %>
+  </div>
+</section>
+
+<section class="profile-grid">
+  <section class="content-panel">
+    <h3>Recent Questions</h3>
+    <% if (!recentQuestions.length) { %>
+      <p class="muted">No recent questions.</p>
+    <% } %>
+    <% recentQuestions.forEach((question) => { %>
+      <article class="mini-post">
+        <h4><a href="/app/questions/<%= question._id %>"><%= question.title %></a></h4>
+        <p><%= question.description.slice(0, 120) %></p>
+        <small><%= new Date(question.createdAt).toLocaleString() %></small>
+      </article>
+    <% }) %>
+  </section>
+
+  <section class="content-panel">
+    <h3>Recent Answers</h3>
+    <% if (!recentAnswers.length) { %>
+      <p class="muted">No recent answers.</p>
+    <% } %>
+    <% recentAnswers.forEach((answer) => { %>
+      <article class="mini-post">
+        <h4><a href="/app/questions/<%= answer.questionId?._id || '' %>"><%= answer.questionId?.title || 'Question' %></a></h4>
+        <p><%= answer.content.slice(0, 120) %></p>
+        <small><%= new Date(answer.createdAt).toLocaleString() %></small>
+      </article>
+    <% }) %>
+  </section>
+</section>
+
+<%- include('partials/app_shell_end') %>
