@@ -17,3 +17,13 @@ export function listUsers({ search = "", page = 1, limit = 20 } = {}) {
   const query = params.toString();
   return apiRequest(`/users${query ? `?${query}` : ""}`);
 }
+
+export function uploadMyAvatar(file) {
+  const formData = new FormData();
+  formData.append("avatar", file);
+
+  return apiRequest("/users/me/avatar", {
+    method: "POST",
+    body: formData,
+  });
+}

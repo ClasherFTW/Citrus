@@ -2,12 +2,36 @@ import { Link } from "react-router-dom";
 import { formatRelativeTime, truncateText } from "../../utils/formatters";
 import { markdownToText } from "../../utils/markdown";
 
-function ProfileSummary({ profile, questions, answers, isLoadingQuestions, isLoadingAnswers }) {
+function ProfileSummary({
+  profile,
+  questions,
+  answers,
+  isLoadingQuestions,
+  isLoadingAnswers,
+  avatarActions = null,
+}) {
+  const avatarUrl = String(profile.avatarUrl || "").trim();
+  const fallbackInitial = String(profile.username || "?").trim().charAt(0).toUpperCase() || "?";
+
   return (
     <>
       <section className="content-panel profile-head">
-        <h2>{profile.username}</h2>
-        <p>{profile.bio || "No bio added yet."}</p>
+        <div className="profile-head__identity">
+          <div className="profile-avatar" aria-label={`${profile.username} avatar`}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={`${profile.username} avatar`} />
+            ) : (
+              <span>{fallbackInitial}</span>
+            )}
+          </div>
+
+          <div className="profile-head__meta">
+            <h2>{profile.username}</h2>
+            <p>{profile.bio || "No bio added yet."}</p>
+          </div>
+        </div>
+
+        {avatarActions}
 
         <div className="stats-strip compact">
           <div>
