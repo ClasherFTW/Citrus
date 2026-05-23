@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "test": "jest --runInBand",
     "seed": "node scripts/seed.js",
     "embed:data": "node scripts/embedData.js"
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "keywords": [
     "express",
@@ -39,6 +43,8 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.7",
+    "supertest": "^7.2.2"
   }
 }
